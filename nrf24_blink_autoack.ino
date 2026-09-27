@@ -1,19 +1,19 @@
-//###### Both Programs are inside here. Set the role by uncomment the SENDER/RECEIVER and comment the other ##########
+//###### Both Programs are inside here. Set the role by uncomment the #define SENDER/#define RECEIVER and comment the other ##########
 #include <SPI.h>
-#include "printf.h"
+//#include "printf.h"
 #include "RF24.h"
-#define CE_PIN 6
-#define CSN_PIN 5
-#define MISO 4
-#define MOSI 3
 #define SCK 2
+#define MOSI 3
+#define MISO 4
+#define CSN_PIN 5
+#define CE_PIN 6
 #define LIGHT 25
 #define INTV1 500
-#define INTV2 50
+#define INTV2 50000   
 #define SIZE 32
 #define NUM_TASKS (sizeof(tasks) / sizeof(tasks[0])) 
 //### Change the role here only #######  
-#define SENDER 1
+//#define SENDER 1
 //#define RECEIVER 1  
 #if defined(SENDER)
   #define ROLE 1
@@ -28,11 +28,11 @@ enum State { IDLE, SENT, GOT_REPLY };
 static State radio_state = IDLE;
 static uint32_t sent_at=0, last_cycle=0,got_it=0,last_delay=0;
 uint8_t buffer[SIZE];
-uint8_t pipe; //optional
+//uint8_t pipe; //optional, for debug
 uint32_t bad=0,succsess=0; //optional
 bool ledState=0;
 RF24 radio(CE_PIN, CSN_PIN);
-uint8_t address[][6] = { "1Node", "2Node" };
+uint8_t address[][6] = { "1Nod", "2Nod" };
 
 void radio_task() {
   static uint32_t millis_500_loop = 0;
@@ -40,7 +40,7 @@ void radio_task() {
   uint32_t now = micros(); 
   switch (radio_state) {
     case IDLE:
-      if ((ledState == 1)&&(now - last_cycle >= 50000)) {
+      if ((ledState == 1)&&(now - last_cycle >= INTV2)) {
         last_cycle = now;
         sent_at = now;
         buffer[0]=0;
@@ -128,10 +128,14 @@ void setup() {
   //radio.enableAckPayload();       
   radio.setAutoAck(true);
   radio.setRetries(5, 15);
-  radio.openWritingPipe(address[radioNumber]);       
+         
   radio.openReadingPipe(1, address[!radioNumber]);
-  radio.stopListening();  
-  if (!ROLE) {radio.startListening();}
+  
+  if (ROLE) {
+    radio.openWritingPipe(address[radioNumber]);
+    radio.stopListening();  
+  }
+  else {radio.startListening();}
   // For debugging info
   // printf_begin();             // needed only once for printing details
   // radio.printDetails();       // (smaller) function that prints raw register values
