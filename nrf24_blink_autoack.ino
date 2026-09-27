@@ -4,6 +4,9 @@
 #include "RF24.h"
 #define CE_PIN 6
 #define CSN_PIN 5
+#define MISO 4
+#define MOSI 3
+#define SCK 2
 #define LIGHT 25
 #define INTV1 500
 #define INTV2 50
@@ -110,9 +113,9 @@ void setup() {
   pinMode(LIGHT, OUTPUT);
   digitalWrite(LIGHT, 1);
   Serial.begin(115200);
-  SPI.setSCK(2);
-  SPI.setMOSI(3);
-  SPI.setMISO(4);
+  SPI.setSCK(SCK);
+  SPI.setMOSI(MOSI);
+  SPI.setMISO(MISO);
   SPI.begin(5000000);  
   if (!radio.begin()) {
     Serial.println(F("radio hardware is not responding!!"));
@@ -122,10 +125,10 @@ void setup() {
   radio.setPALevel(RF24_PA_MAX);  // RF24_PA_MAX is default.
   radio.setAddressWidth(4);
   //radio.enableDynamicPayloads();  // ACK payloads are dynamically sized
-  //radio.enableAckPayload();       //muss muss für autoack
+  //radio.enableAckPayload();       
   radio.setAutoAck(true);
   radio.setRetries(5, 15);
-  radio.openWritingPipe(address[radioNumber]);       // ← THIS was missing
+  radio.openWritingPipe(address[radioNumber]);       
   radio.openReadingPipe(1, address[!radioNumber]);
   radio.stopListening();  
   if (!ROLE) {radio.startListening();}
@@ -164,38 +167,10 @@ void loop() {
         }
       }
     }
+    //#### uncomment the block for a printout ######### 
     /*if(currentMillis-millis_500_loop>=500){
       millis_500_loop=currentMillis;
       Serial.println(rx_count);
     }*/
   }  
 }
-/*
-// Setup:
-attachInterrupt(digitalPinToIRQ(IRQ_PIN), onRadioIRQ, RISING);
-
-// ISR — fires at ~400 µs, every time, no variation:
-void onRadioIRQ() {
-    radio.clearStatusFlags(RF24_RX_DR);
-    radio.read(&response, 1);
-    radio_state = GOT_REPLY;
-}   
-*/
-
-
-/*
-To actually reduce it
-Switch to 2 Mbps — halves airtime to ~80 µs total:
-radio.setDataRate(RF24_2MBPS);  // on both sides
-
-You should see ~350–450 µs total.
-Use 4-byte addresses — saves 8 bits per packet (both TX and ACK):
-radio.setAddressWidth(4);  // on both sides
-
-Use writeFast() + txStandBy() — reduces MCU-side SPI overhead by decoupling the FIFO write from the wait:
-radio.writeFast(&buffer, 1);
-radio.txStandBy();  // blocks until TX_DS, but with less overhead
-
-IRQ pin (biggest win, most work) — connect the IRQ pin to an Arduino interrupt, fire CE, and let the interrupt fire when TX_DS is set. Eliminates all polling overhead. Realistic total: ~200 µs at 2 Mbps.
-Realistic best case for your 1-byte payload with auto-ack: ~200 µs at 2 Mbps with 4-byte addresses and IRQ. The 750 µs you're seeing is normal for 1 Mbps blocking write().
-*/
